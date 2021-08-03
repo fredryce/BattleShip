@@ -7,23 +7,39 @@ package battleship;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 import static java.awt.image.ImageObserver.ABORT;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import io.socket.client.Socket;
 
 /**
  *
  * @author Fred
  */
-class SelectShip extends JFrame implements ActionListener {
+//use call back to pass in a emit message to the server after conneted, when the call back function in the client is called, the game is ready.
+class SelectShip implements ActionListener {
     
     int battle = 0; //the number of buttons needed for each ship
     int cruiser = 0;
@@ -36,16 +52,60 @@ class SelectShip extends JFrame implements ActionListener {
     
     int previousX = 0;
     int previousY = 0;
+    
+    private HashMap<String, String> enemyBoards = new HashMap<String, String>();
+    
+    private boolean game_ready= false; //threads can monitor changes
+    
+    
+    public boolean isGame_ready() {
+		return game_ready;
+	}
+
+	
+	private Thread runSpin;; //thread to wait til the player can be ready, ungray the button
+    
     private BattleShip[] myBS = new BattleShip[1]; //length based on the number of the type of ship on the board
     private Cruiser[] myCS = new Cruiser[2];     
     private Destroyer[] myDS = new Destroyer[3];
     private Submarine[] mySB = new Submarine[4];
     
     JButton[] buttons = new JButton[100];
-    Ocean playerOcean = new Ocean();
-    private int chosenOption;
-    public SelectShip(int chosenOption) {
-        this.chosenOption = chosenOption;
+    Ocean playerOcean = new Ocean(null);
+    Ocean myOcean = new Ocean(null); //this is enemy ocean can be coverted to a list
+    
+    
+    
+    JButton myButton;
+    JButton randomplace;
+    private JFrame gameFrame = new JFrame();
+    private FinalGUI finalGui;
+    
+    
+    private List<SelectShip> instanceList;
+    private JLabel shipsleftLabel;
+    
+    
+    
+    
+    //public SelectShip(int chosenOption, Socket newSocket) {
+    public SelectShip(List instanceList) {
+    	this.instanceList = instanceList;
+    	
+    	
+    	if(instanceList==null){
+    		this.instanceList = new ArrayList<SelectShip>(); //keep track of all the objects created and set the first one to be the orginal
+    	}
+    	
+    	
+    
+    /**
+    	super(chosenOption, newSocket);
+    	
+    	if(newSocket!= null){
+    		newSocket.emit("request_boards", "what"); //this cause inifite loop
+    	}
+    	**/
         
         myBS[0] = new BattleShip();
         for(int i = 0; i < myCS.length; i++){
@@ -65,10 +125,21 @@ class SelectShip extends JFrame implements ActionListener {
         
         
         
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
-        setUndecorated(true);
-        setTitle("Choose Battle Ship Locations");
-        setSize(1000, 1000);
+        //gameFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        gameFrame.setUndecorated(false);
+        gameFrame.setTitle("Choose Battle Ship Locations");
+        gameFrame.setSize(5000, 5000);
+        
+        gameFrame.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                if(NetworkNew.socket!=null) {
+                	NetworkNew.socket.disconnect();
+                }
+                new SelectOptions();
+            	gameFrame.dispose();
+            }
+        });
+        
 
         //myFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         //myFrame.setUndecorated(true);
@@ -90,25 +161,103 @@ class SelectShip extends JFrame implements ActionListener {
             selectShip.add(buttons[i]);
 
         }
-        add(selectShip);
-        JButton myButton = new JButton("Set Selection");
+        gameFrame.add(selectShip);
+        myButton = new JButton("Set Selection");
+        randomplace = new JButton("Randomly place");
         JButton reset = new JButton("Reset Board");
+        shipsleftLabel = new JLabel("", JLabel.LEFT);
+        //adjustLabelSize(); //adjust labelsize, this can be added to listener later
         ActionListener listener = new startListener();
         ActionListener resetListner = new ResetListener();
         myButton.addActionListener(listener);
         reset.addActionListener(resetListner);
+        myPanel.add(shipsleftLabel, BorderLayout.WEST);
         myPanel.add(myButton);
+        //myPanel.add(randomplace);
         myPanel.add(reset);
-        add(myPanel, BorderLayout.SOUTH);
+        gameFrame.add(myPanel, BorderLayout.SOUTH);
 
-        pack();
-        setVisible(true);
-        JOptionPane.showMessageDialog(null, "I only HIRE Professionals to test my flawless program -anonymous Paguine NinjaPandaexpresswtfAmidoingUpat2aminthemorning /n/n/n/n/n WwwherrreismyNewline.... \n ifyouhappentofinishreadingthisijustneed2tellyouthatyoumustbereallybored....\n butatleastwesharesomethingIncommonsinceIwastedmytimetypingthis...... \n", "My FLAWLESS Program", JOptionPane.INFORMATION_MESSAGE);
-        JOptionPane.showMessageDialog(this, "PS. the previous message might contain typos so i dont suggest you finish reading it....", "LALALA", JOptionPane.WARNING_MESSAGE);
-        JOptionPane.showMessageDialog(null, "Set BattleShip click 4 spaces! ", "BattleShip", JOptionPane.INFORMATION_MESSAGE);
-
+        gameFrame.pack();
+        gameFrame.setVisible(true);
+        //JOptionPane.showMessageDialog(null, "I only HIRE Professionals to test my flawless program -anonymous Paguine NinjaPandaexpresswtfAmidoingUpat2aminthemorning /n/n/n/n/n WwwherrreismyNewline.... \n ifyouhappentofinishreadingthisijustneed2tellyouthatyoumustbereallybored....\n butatleastwesharesomethingIncommonsinceIwastedmytimetypingthis...... \n", "My FLAWLESS Program", JOptionPane.INFORMATION_MESSAGE);
+        //JOptionPane.showMessageDialog(null , "PS. the previous message might contain typos so i dont suggest you finish reading it....", "LALALA", JOptionPane.INFORMATION_MESSAGE);
+        //JOptionPane.showMessageDialog(null, "Set '1' BattleShip click 4 spaces! ", "BattleShip", JOptionPane.INFORMATION_MESSAGE);
+        shipsleftLabel.setForeground(Color.red);
+        shipsleftLabel.setText("Set '1' BattleShip click 4 spaces!");
     }
+    
+    
+    public void adjustLabelSize() {
+    	
+    	Font labelFont = shipsleftLabel.getFont();
+    	String labelText = shipsleftLabel.getText();
 
+    	int stringWidth = shipsleftLabel.getFontMetrics(labelFont).stringWidth(labelText);
+    	int componentWidth = shipsleftLabel.getWidth();
+
+    	// Find out how much the font can grow in width.
+    	double widthRatio = (double)componentWidth / (double)stringWidth;
+
+    	int newFontSize = (int)(labelFont.getSize() * widthRatio);
+    	int componentHeight = shipsleftLabel.getHeight();
+
+    	// Pick a new font size so it will not be larger than the height of label.
+    	int fontSizeToUse = Math.min(newFontSize, componentHeight);
+
+    	// Set the label's font size to the newly determined size.
+    	shipsleftLabel.setFont(new Font(labelFont.getName(), Font.PLAIN, fontSizeToUse));
+    }
+    
+    public void setGame_ready(boolean game_ready) {
+		this.game_ready = game_ready;
+		if(this.game_ready==true) {
+			
+		   System.out.println("Games is ready loading board...");
+		   //Ocean myocean = new Ocean();    //creates the shipObject
+		   if(myOcean.name_getter() == null){
+			   myOcean.placeAllShipsRandomly(); //place the ships on the Ocean array
+		   }
+		   
+           
+           myOcean.print(); // transform the shipObject array into integer object array
+           myOcean.printTest(); //display the integer object array.
+           System.out.println();
+           playerOcean.print();
+           playerOcean.printTest();
+           System.out.println();
+           
+           this.gameFrame.setTitle("Changed title");
+           this.gameFrame.dispose();
+           for (SelectShip temp : this.instanceList) {
+               temp.gameFrame.dispose();
+           }
+           finalGui = new FinalGUI(myOcean, playerOcean); //pass in the ocean array into the GUI
+           
+			
+		}
+	}
+
+    
+ 
+    
+    public FinalGUI getFinalGui() {
+		return finalGui;
+	}
+
+	public void setFinalGui(FinalGUI finalGui) {
+		this.finalGui = finalGui;
+	}
+
+	public void setReady(boolean value, String notfirst) {
+    	System.out.println("test");
+    	playerOcean.printTest();
+    	System.out.println("test");
+    	
+    	gameFrame.setTitle("Changed title");
+    	
+    	setGame_ready(value);
+    }
+    
     @Override
     public void actionPerformed(ActionEvent e) {
         JButton buttonClicked = ((JButton) e.getSource());
@@ -171,7 +320,9 @@ class SelectShip extends JFrame implements ActionListener {
                     setVisible();
                     previousX = 0; 
                     previousY = 0;
-                    JOptionPane.showMessageDialog(null, "Set Cruiser NEXT click 3 spaces! ", "Cruiser", JOptionPane.INFORMATION_MESSAGE);
+                    //JOptionPane.showMessageDialog(null, "Set '2' Cruiser NEXT click 3 spaces each! ", "Cruiser", JOptionPane.INFORMATION_MESSAGE);
+                    shipsleftLabel.setForeground(new Color(0,102,0));
+                    shipsleftLabel.setText("Set '2' Cruisers. Click 3 spaces each");
                 }
 
             } else if (cruiser < CsL ||  numCruiser >playerOcean.cruisers) {
@@ -197,7 +348,7 @@ class SelectShip extends JFrame implements ActionListener {
                     }
                 }
                 
-                buttons[buttonNum].setBackground(Color.green);
+                buttons[buttonNum].setBackground(new Color(0,102,0));
                 playerOcean.getOceanArray()[x][y] = myCS[numCruiser];
                 cruiser++;
                 if (cruiser == CsL) { //if ship length time pressed move on to the next ship object in the array
@@ -214,8 +365,9 @@ class SelectShip extends JFrame implements ActionListener {
                     else{
                         previousX = 0;
                         previousY = 0;
-                        JOptionPane.showMessageDialog(null, "Set Destroyer NEXT click 2 spaces! ", "Destroyer", JOptionPane.INFORMATION_MESSAGE);
-                    
+                        //JOptionPane.showMessageDialog(null, "Set '3' Destroyer NEXT click 2 spaces each! ", "Destroyer", JOptionPane.INFORMATION_MESSAGE);
+                        shipsleftLabel.setForeground(Color.blue);
+                        shipsleftLabel.setText("Set '3' Destroyers. Click 2 spaces each");
                     }
                 }
             } else if (destroyer < DsL ||  numDestroyer >playerOcean.destroyers) {
@@ -250,14 +402,16 @@ class SelectShip extends JFrame implements ActionListener {
                         destroyer = 0;
                     }
                     else{
-                        JOptionPane.showMessageDialog(null, "Set SubMarine NEXT click 1 spaces! ", "SubMarine", JOptionPane.INFORMATION_MESSAGE);
+                        //JOptionPane.showMessageDialog(null, "Set '4' SubMarine NEXT click 1 space each! ", "SubMarine", JOptionPane.INFORMATION_MESSAGE);
+                    	shipsleftLabel.setForeground(new Color(102,0,153));
+                        shipsleftLabel.setText("Set '4' Submarines. Click 1 space each");
                     }
                 }
             } else if (submarine < SsL || numSubmarine >playerOcean.submarines) {
                 if(submarine == 0){
                    boolean[] test = buttonDisable(x,y, 1);
                 }
-                buttons[buttonNum].setBackground(Color.ORANGE);
+                buttons[buttonNum].setBackground(new Color(102,0,153));
                 playerOcean.getOceanArray()[x][y] = mySB[numSubmarine];
                 submarine++;
                 if (submarine == SsL) {
@@ -271,6 +425,8 @@ class SelectShip extends JFrame implements ActionListener {
                         for(int i = 0 ; i < buttons.length; i++){
                             buttons[i].setEnabled(false);
                         }
+                        shipsleftLabel.setForeground(Color.black);
+                        shipsleftLabel.setText("Board all set. click 'SET SELECTION' >>> ");
                     }
                 }
             }
@@ -450,19 +606,59 @@ class SelectShip extends JFrame implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            dispose();
-            SelectShip newGame = new SelectShip(chosenOption);
+        	gameFrame.dispose();
+            //new SelectShip(choiceoption, socket);
+        	instanceList.add(SelectShip.this);
+            new SelectShip(instanceList);
         }
         
         
         
     }
+    /**
+    private class Waitingforready extends Thread {
+
+    	   public void run() {
+    		   
+    		   while(true) {
+    			   System.out.println("Games is ready or.." + game_ready);
+    			   if(game_ready==true) {
+    				   System.out.println("Games is ready loading board...");
+    				   //Ocean myocean = new Ocean();    //creates the shipObject
+    				   if(myOcean.name_getter() == null){
+    					   myOcean.placeAllShipsRandomly(); //place the ships on the Ocean array
+    				   }
+    		           
+    		           myOcean.print(); // transform the shipObject array into integer object array
+    		           myOcean.printTest(); //display the integer object array.
+    		           FinalGUI myGUI = new FinalGUI(myOcean, playerOcean, choiceoption, socket); //pass in the ocean array into the GUI
+    		           gameFrame.dispose();
+    				   break;
+    			   }
+    			   
+    		   }
+    		   
+    	   }
+    	
+    	
+    	
+    }
+    **/
 
     private class startListener implements ActionListener {       //this listener for the start button on the buttom.
 
         @Override
         public void actionPerformed(ActionEvent e) {
             //System.out.println("Started the array");
+        	
+
+        	int total_ships = numBattle + numCruiser + numDestroyer + numSubmarine;
+        	System.out.println(total_ships);
+        	
+        	if(total_ships < 10) {
+        		JOptionPane.showMessageDialog(null, "Error: not enough Boat on Board!!!!!!!!!!!!!!!!", "Need correct Amount of boat", JOptionPane.ERROR_MESSAGE);
+        		return;
+        	}
             
             Ship empty = new EmptySea();
             int totalShip = 0;
@@ -480,28 +676,95 @@ class SelectShip extends JFrame implements ActionListener {
 
             }
              if(totalShip != 20){
-                dispose();
+            	//gameFrame.dispose();
                 JOptionPane.showMessageDialog(null, "Error: not enough Boat on Board!!!!!!!!!!!!!!!!", "Need correct Amount of boat", JOptionPane.ERROR_MESSAGE);
-                SelectShip newGame = new SelectShip(chosenOption);
+                //new SelectShip(chosenOption, socket);
                 
             }
              else{
-            
-            
-            Ocean myocean = new Ocean();    //creates the shipObject
-            myocean.placeAllShipsRandomly(); //place the ships on the Ocean array
-//
-//            Ocean myocean2 = new Ocean();
-//            myocean2 = playerOcean;
-//            myocean2.placeAllShipsRandomly();
-//            playerOcean = myocean2; //temp here
-            myocean.print(); // transform the shipObject array into integer object array
-            myocean.printTest(); //display the integer object array.
-            FinalGUI myGUI = new FinalGUI(myocean, playerOcean); //pass in the ocean array into the GUI
-            dispose();
+            	 //put runnable start here, disable button, the rest of the ccode should be called within the thread
+            	 
+            	 myButton.setEnabled(false);
+            	 
+            	 if(SelectOptions.choiceoption==1) {
+            		 setGame_ready(true);
+            		 
+            	 }
+            	 
+            	 
+            	 if(!instanceList.isEmpty()){
+            		 SelectShip my_instance = instanceList.get(0);
+            		 my_instance.playerOcean = playerOcean;
+            		 System.out.println("old player ocean");
+            		 my_instance.playerOcean.print();
+          			my_instance.playerOcean.printTest();
+          			instanceList.add(SelectShip.this); //need to add selfinstance or when the ready signal is sent, the action goes back to the orginal object
+          			//add it in here and use loop to remove frame later
+            	 }
+            	 
+            	 
+            	 sendReady(playerOcean);
+            	 
              } 
         }
 
     }
+
+	public void sendReady(Ocean myPlayerOcean) {
+		myPlayerOcean.print();
+		
+		if(SelectOptions.choiceoption==1) {
+			game_ready=true;
+		}
+		else {
+			System.out.println("Im sending board now....");
+			myPlayerOcean.printTest();
+			this.playerOcean = myPlayerOcean;
+			
+			JSONObject object = new JSONObject();
+			try {
+				object.put("location", myPlayerOcean.getprint());
+				object.put("objectid", myPlayerOcean.getObjectID());
+			} catch (JSONException e) {
+				
+				e.printStackTrace();
+			}
+					
+			NetworkNew.socket.emit("player_ready", object);
+		}
+		
+	}
+
+	public void processBoard(String myString) {
+		System.out.println("Processing board....");
+		try {
+			JSONObject myObject = new JSONObject(myString);
+			JSONArray locationArray = myObject.getJSONArray("location");
+			JSONArray objectidArray = myObject.getJSONArray("objectid");
+			String id_value = myObject.getString("id");
+			
+			
+			int count = locationArray.length();
+	        System.out.println(id_value);
+	        
+	        myOcean.name_setter(id_value);
+	        myOcean.setBoard(locationArray, objectidArray);
+	        enemyBoards.put(id_value, myString);
+			
+			
+			
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		System.out.println("Process complete!");
+		//System.out.println(location);
+		
+		
+		
+	}
+
+
 
 }

@@ -18,6 +18,9 @@ import javax.swing.JPanel;
  * @author xwang2945
  */
 public class SelectOptions extends JFrame implements ActionListener{
+	
+	
+	 public static int choiceoption;
      public SelectOptions() {
          
         JButton[] options = new JButton[4];
@@ -62,11 +65,22 @@ public class SelectOptions extends JFrame implements ActionListener{
     public void actionPerformed(ActionEvent e) {
         System.out.println(((JButton)e.getSource()).getClientProperty("player_num"));
         int optionchoice =(int)((JButton)e.getSource()).getClientProperty("player_num");
+        SelectOptions.choiceoption = optionchoice;
         if(optionchoice ==3){
             dispose();
             System.exit(0);
         }
-        SelectShip newGame = new SelectShip(optionchoice);
+        else if(optionchoice==1) {
+        	new SelectShip(null);
+        }
+        else {
+        	new NetworkNew();
+        }
+        //SelectShip newGame = new SelectShip(optionchoice, null);
+        dispose();
+        
+        
+       
         
     }
     

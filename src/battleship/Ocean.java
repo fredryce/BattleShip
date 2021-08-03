@@ -5,51 +5,83 @@
  */
 package battleship;
 
+import java.io.Serializable;
 import java.security.SecureRandom;
+import java.util.HashMap;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 
 /**
  *
  * @author xwang2945
  */
-public class Ocean {
+public class Ocean{
     private Ship[][] oceanArray;
-    private int[][] shipTest;
+    private int[][] shipTest; //this one should be passed and processed
+    private int[][] objectID; //pass to server to tell which ones are related
     int battleShipNum = 1;
     int cruisers = 2;
     int destroyers = 3;
     int submarines = 4;
     int total = cruisers + battleShipNum + destroyers + submarines;
     
-    
     private BattleShip[] myBS = new BattleShip[1]; //length based on the number of the type of ship on the board
     private Cruiser[] myCS = new Cruiser[2];     
     private Destroyer[] myDS = new Destroyer[3];
     private Submarine[] mySB = new Submarine[4];
     
-    
     SecureRandom mySR = new SecureRandom();
-    public Ocean(){
+    
+    private String oceanName;
+    
+    public Ocean(String oceanName){
         oceanArray = new Ship[10][10];
         shipTest = new int[10][10];
+        objectID = new int[10][10];
+        this.oceanName = oceanName;
+        
+        
     }
+  
+	public int[][] getObjectID() {
+		return objectID;
+	}
+
+	public void setObjectID(int[][] objectID) {
+		this.objectID = objectID;
+	}
+
+	public String name_getter() {
+		return(oceanName);
+    
+    }
+    public void name_setter(String oceanName) {
+    	this.oceanName = oceanName;
+    }
+    
+   
+    
     public void print()
     {
         for(int i = 0; i< 10; i++){
             for(int j = 0; j < 10; j++){
                 if (isOccupied(i, j)) {
                     if (oceanArray[i][j].getShipType().equals("battleship")) {
-                        shipTest[i][j] = 1;     // you can change these numbers to distinguish the ship type
+                        shipTest[i][j] = 1;     // you can change these numbers to distinguish the ship type         
 
                     } else if (oceanArray[i][j].getShipType().equals("cruiser")) {
-                        shipTest[i][j] = 1;
+                        shipTest[i][j] = 2;
                     } else if (oceanArray[i][j].getShipType().equals("submarine")) {
-                        shipTest[i][j] = 1;
+                        shipTest[i][j] = 4;
                     } else if (oceanArray[i][j].getShipType().equals("destroyer")) {
-                        shipTest[i][j] = 1;
+                        shipTest[i][j] = 3;
 
                     } else if (oceanArray[i][j].getShipType().equals("empty")) {
                         shipTest[i][j] = 0;
                     }
+                    
+                    objectID[i][j] = oceanArray[i][j].hashCode();
                 }
                 
             }
@@ -64,6 +96,70 @@ public class Ocean {
             System.out.println();
             
         }
+    }
+    public int[][] getprint() {
+    	return(shipTest);
+    }
+    
+    public void setBoard(JSONArray location, JSONArray objectidarray) {
+    	//this is when passing in a board and set the object based on this board
+    	HashMap<Integer, Ship> idtoindex = new HashMap<Integer, Ship>();
+    	
+    	int count = location.length();
+        for (int i = 0; i <count ; i++) {
+			try {
+				JSONArray jsonArr = location.getJSONArray(i);
+				for(int j = 0; j<jsonArr.length(); j++) {
+					int element_value = jsonArr.getInt(j);
+					
+					if(element_value != 0) {
+						int objectID = objectidarray.getJSONArray(i).getInt(j);
+						//System.out.println(objectID);
+						if(idtoindex.containsKey(objectID)){
+							
+							oceanArray[i][j] = idtoindex.get(objectID);
+							
+						}
+						else {
+							if(element_value==1) {
+								BattleShip enemyBs = new BattleShip();
+								idtoindex.put(objectID, enemyBs);
+								oceanArray[i][j] = enemyBs;
+							}
+							else if(element_value==2) {
+								Cruiser enemyCs = new Cruiser();
+								idtoindex.put(objectID, enemyCs);
+								oceanArray[i][j] = enemyCs;
+							}
+							else if(element_value==3) {
+								Destroyer enemyDs = new Destroyer();
+								idtoindex.put(objectID, enemyDs);
+								oceanArray[i][j] = enemyDs;
+							}
+							else if(element_value==4) {
+								Submarine enemySs = new Submarine();
+								idtoindex.put(objectID, enemySs);
+								oceanArray[i][j] = enemySs;
+							}
+							
+							
+						}
+						
+						
+					}
+					else {
+						oceanArray[i][j] = new EmptySea();
+						
+					}
+				}
+				
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+     
+          }
+    	
     }
 
     public void placeAllShipsRandomly(){
@@ -164,18 +260,6 @@ public class Ocean {
                 
                 
             }
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             
 
         }

@@ -34,7 +34,7 @@ public class GameControl {
         this.player1 = player1;
     }
     public Ocean setAi(){
-        Ocean temp = new Ocean();
+        Ocean temp = new Ocean(null);
         
         
         return temp;

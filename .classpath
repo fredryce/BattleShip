@@ -6,6 +6,12 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="D:/Java/BattleShipOrig/dist/BattleShipRun .jar"/>
+	<classpathentry kind="lib" path="dist/BattleShipRun .jar"/>
+	<classpathentry kind="lib" path="lib/engine.io-client-2.0.0.jar"/>
+	<classpathentry kind="lib" path="lib/json-20090211.jar"/>
+	<classpathentry kind="lib" path="lib/okhttp-3.12.12.jar"/>
+	<classpathentry kind="lib" path="lib/okio-1.15.0.jar"/>
+	<classpathentry kind="lib" path="lib/socket.io-client-2.0.1.jar"/>
+	<classpathentry kind="lib" path="lib/json-20210307.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

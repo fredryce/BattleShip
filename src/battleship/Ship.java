@@ -6,12 +6,13 @@
 package battleship;
 
 import java.awt.Color;
+import java.io.Serializable;
 
 /**
  *
  * @author xwang2945
  */
-public abstract class Ship implements ShipAction {
+public abstract class Ship implements ShipAction{
     private String name;
     private int bowRow;
     private int bowColumn;
