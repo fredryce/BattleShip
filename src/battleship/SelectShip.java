@@ -7,6 +7,7 @@ package battleship;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -33,7 +34,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import io.socket.client.Socket;
-
 /**
  *
  * @author Fred
@@ -98,14 +98,6 @@ class SelectShip implements ActionListener {
     	}
     	
     	
-    
-    /**
-    	super(chosenOption, newSocket);
-    	
-    	if(newSocket!= null){
-    		newSocket.emit("request_boards", "what"); //this cause inifite loop
-    	}
-    	**/
         
         myBS[0] = new BattleShip();
         for(int i = 0; i < myCS.length; i++){
@@ -128,7 +120,7 @@ class SelectShip implements ActionListener {
         //gameFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         gameFrame.setUndecorated(false);
         gameFrame.setTitle("Choose Battle Ship Locations");
-        gameFrame.setSize(5000, 5000);
+        gameFrame.setPreferredSize(new Dimension(800, 500));
         
         gameFrame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
@@ -169,11 +161,13 @@ class SelectShip implements ActionListener {
         //adjustLabelSize(); //adjust labelsize, this can be added to listener later
         ActionListener listener = new startListener();
         ActionListener resetListner = new ResetListener();
+        
         myButton.addActionListener(listener);
         reset.addActionListener(resetListner);
+        randomplace.addActionListener(new RandomListener());
         myPanel.add(shipsleftLabel, BorderLayout.WEST);
         myPanel.add(myButton);
-        //myPanel.add(randomplace);
+        myPanel.add(randomplace);
         myPanel.add(reset);
         gameFrame.add(myPanel, BorderLayout.SOUTH);
 
@@ -610,6 +604,63 @@ class SelectShip implements ActionListener {
             //new SelectShip(choiceoption, socket);
         	instanceList.add(SelectShip.this);
             new SelectShip(instanceList);
+        }
+        
+        
+        
+    }
+    
+    
+    private class RandomListener implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+        	Ocean tempplayerOcean = new Ocean(null);
+        	tempplayerOcean.placeAllShipsRandomly();
+        	playerOcean = tempplayerOcean;
+        	
+        	
+        	numBattle=1;
+        	numCruiser=2;
+        	numDestroyer=3;
+        	numSubmarine=4;
+        	
+        	for (int i = 0; i < playerOcean.getOceanArray().length; i++) {
+                for (int j = 0; j < playerOcean.getOceanArray().length; j++) {
+                	int buttonNum = (i * 10) + j;
+                    if (playerOcean.getOceanArray()[i][j].getShipType() != "empty") {
+                    	String myType = playerOcean.getOceanArray()[i][j].getShipType();
+                    	System.out.println(myType);
+                    	if(myType == "battleship") {
+                    		buttons[buttonNum].setBackground(Color.red);
+                    		
+                    	}
+                    	else if(myType == "destroyer") {
+                    		buttons[buttonNum].setBackground(Color.blue);
+                    	}
+                    	else if(myType == "cruiser") {
+                    		buttons[buttonNum].setBackground(new Color(0,102,0));
+                    	}
+                    	else if(myType == "submarine") {
+                    		buttons[buttonNum].setBackground(new Color(102,0,153));
+                    	}
+                    	
+                    	
+
+                    }
+                    else {
+                    	buttons[buttonNum].setBackground(null);
+                    	
+                    }
+                    buttons[buttonNum].setEnabled(false);
+                    
+                    
+
+                }
+
+            }
+        	
+        	
         }
         
         
