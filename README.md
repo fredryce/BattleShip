@@ -7,3 +7,5 @@ To include the jar file as a dependency download it from this [link](https://dri
 
 
 ![example game board](board.PNG)
+
+BattleShip Install
